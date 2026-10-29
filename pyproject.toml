@@ -1,0 +1,28 @@
+[project]
+name = "pgx-rl"
+version = "0.1.0"
+description = "Reinforcement learning with pgx and JAX"
+readme = "README.md"
+authors = [
+    { name = "David Gray", email = "davidgraymi@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "flax>=0.12.12",
+    "jax>=0.12.0.1",
+    "optax>=0.2.8",
+    "pgx>=2.6.0",
+]
+
+[project.scripts]
+pgx-rl = "pgx_rl:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
