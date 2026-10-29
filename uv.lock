@@ -21,6 +21,23 @@ wheels = [
 ]
 
 [[package]]
+name = "chex"
+version = "0.1.92"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "toolz" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/71/7b2c28cd5ba2743e7cd4d1262d73cdc83c3dce395f56fd52c0ff50947514/chex-0.1.92.tar.gz", hash = "sha256:fa8beff1124204ae466a6eb13cb91ae3c24322a1c7216946aee93d031e2f1996", size = 91863, upload-time = "2026-06-12T14:28:37.908Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/42/5d8282d6dc4cd9971f865eb5cc767d180d1564475826e43150d1ea1dba51/chex-0.1.92-py3-none-any.whl", hash = "sha256:f34989d9bff7954edfab09fba7757e3d62404da34577bff0d253599ec5b4f93d", size = 102275, upload-time = "2026-06-12T14:28:36.579Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -148,6 +165,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49", size = 82454, upload-time = "2026-05-07T12:08:28.36Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a", size = 91687, upload-time = "2026-05-07T12:08:27.182Z" },
+]
+
+[[package]]
+name = "mctx"
+version = "0.0.71"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "chex" },
+    { name = "jax" },
+    { name = "jaxlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/cc/6478f9d28768dbb83433306409d445398fa5b05b8d23fab16d06cac29998/mctx-0.0.71.tar.gz", hash = "sha256:f1546009fe5d714a10a200ffeb51e5b1ea4710f4b15f96ccb8d9874d9651941d", size = 404535, upload-time = "2026-06-15T10:33:46.985Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/f8/1702f59a448afc21a86a172e47c10327fde260617de04630dc8044b587de/mctx-0.0.71-py3-none-any.whl", hash = "sha256:15be68b6344ca93e3bc4ae5be3a7ced93609839909acecd896e7d17a73b9b87e", size = 482505, upload-time = "2026-06-15T10:33:45.515Z" },
 ]
 
 [[package]]
@@ -385,6 +416,7 @@ source = { editable = "." }
 dependencies = [
     { name = "flax" },
     { name = "jax" },
+    { name = "mctx" },
     { name = "optax" },
     { name = "pgx" },
 ]
@@ -399,6 +431,7 @@ dev = [
 requires-dist = [
     { name = "flax", specifier = ">=0.12.12" },
     { name = "jax", specifier = ">=0.12.0.1" },
+    { name = "mctx", specifier = ">=0.0.71" },
     { name = "optax", specifier = ">=0.2.8" },
     { name = "pgx", specifier = ">=2.6.0" },
 ]
@@ -695,6 +728,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/66/5b/3d17038c7378fbe87f68836e3b7bad368dd1dee071990ed641fe7cf19e9a/tensorstore-0.1.86-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:f5a5ebf797b04ee9dec74c8a98d78eaa646ae76b5eb10809c5bbc836c61144c5", size = 15675157, upload-time = "2026-10-26T20:05:51.661Z" },
     { url = "https://files.pythonhosted.org/packages/1c/06/ec7948f42b68c94c7d1857c88c92c877a46a94ded09c32664e61050bf6da/tensorstore-0.1.86-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a84d49131947a662a8aed42e66d5fd6caef021a8a736a798ab2f0e4ce23c4840", size = 20212864, upload-time = "2026-10-26T20:05:53.751Z" },
     { url = "https://files.pythonhosted.org/packages/03/12/5d04e3e3009b8478b2c55762e6e269148ae80a95573108386eba18f46aea/tensorstore-0.1.86-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:38fd8190f7c353687ed4aad655d0592f3383b761c0ba17f5002279c126deda20", size = 21816193, upload-time = "2026-10-26T20:05:55.869Z" },
+]
+
+[[package]]
+name = "toolz"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/31/6f/ae20c212a07aa2d156c787383d8088a5e045ee39628661edb190c97e1659/toolz-1.2.0.tar.gz", hash = "sha256:9667a038e9d6ecba37995e26cb2f59ec6420b6ad8dd9677de59db9b956b08490", size = 55442, upload-time = "2026-10-07T04:16:25.639Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/17/4c8beb6c8c4176c6bf143bfd7e1e4dd6719b00ced90738c7ac471b71c1df/toolz-1.2.0-py3-none-any.whl", hash = "sha256:890f820b1cb8152785aaf9386d8707770110809035800985ca65cb24ce1120ef", size = 60789, upload-time = "2026-10-07T04:16:24.173Z" },
 ]
 
 [[package]]
