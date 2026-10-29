@@ -10,3 +10,5 @@ data/
 *.pgn
 *.pgn.zst
 stockfish*
+*.safetensors
+*.safetensors.json

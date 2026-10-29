@@ -25,6 +25,8 @@ uv run pgx-rl-chess --iterations 2 --selfplay-batch 8 --simulations 4 --max-step
 - `src/pgx_rl/chess.py`: network, Gumbel MuZero self-play, update, eval, CLI.
 - `src/pgx_rl/moves.py`: python-chess <-> pgx move conversion.
 - `src/pgx_rl/elo.py`, `evaluate.py`: Elo estimates and the Stockfish match harness (`pgx-rl-eval`).
+- `src/pgx_rl/data.py`, `label.py`: Lichess PGN to hash-pinned shards (`pgx-rl-data`) and Stockfish labels (`pgx-rl-label`).
+- `src/pgx_rl/repro.py`, `hub.py`: seeds, run records, safetensors checkpoints; Hugging Face push/pull (`pgx-rl-hub`).
 - `src/pgx_rl/bench.py`: throughput benchmark (`pgx-rl-bench`).
 - `tests/`: pytest; keep tests tiny (few simulations, small batches) so they run on CPU in seconds.
 - `docs/ARCHITECTURE.md`: design and milestones.
@@ -42,6 +44,13 @@ Default to CPU (`jax>=0.12`). jax-mps is faster for net-heavy work but requires 
 - Never claim strength improvements without an evaluation result (match vs a fixed opponent, with sample size). Win-rate vs the random mover is only a sanity check.
 - Report what was run and what was not. If a change was not executed (for example, no GPU available), say so.
 
+## Reproducibility
+- Every result cites the code commit, `dataset_id`, seed and checkpoint hash. Training and eval write these to run records; do not hand-edit them.
+- Derive all randomness from `repro.seed_everything(seed)` and its JAX key. No unseeded randomness, no wall-clock-dependent behavior in data or training.
+- Write safetensors only through `repro.save_tensors` (single metadata key) so file hashes are stable. No pickle for new data or checkpoints.
+- Datasets are immutable once published: a changed filter, source or label produces a new `dataset_id`, never an in-place edit.
+- Hub pushes are outward-facing. Never run a real `pgx-rl-hub push-*` without the user asking; use `--dry-run` otherwise. Repos stay private unless the user says `--public`.
+
 ## Do not
-- Commit data dumps, checkpoints (`*.pkl`), or Stockfish binaries; keep them gitignored.
+- Commit data dumps, checkpoints (`*.safetensors`), or Stockfish binaries; keep them gitignored.
 - Run long training jobs in the foreground; run them in the background and log to a file.

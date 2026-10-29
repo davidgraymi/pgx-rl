@@ -6,7 +6,6 @@ exceed ``--max-steps`` plies are scored as draws.
 """
 
 import argparse
-import pickle
 import time
 from functools import partial
 
@@ -16,6 +15,8 @@ import jax.numpy as jnp
 import mctx
 import optax
 import pgx
+
+from pgx_rl import repro
 
 env = pgx.make("chess")
 
@@ -201,12 +202,12 @@ def main():
     p.add_argument("--blocks", type=int, default=4)
     p.add_argument("--eval-every", type=int, default=10)
     p.add_argument("--eval-batch", type=int, default=64)
-    p.add_argument("--save", default="chess_params.pkl")
+    p.add_argument("--save", default="chess_params.safetensors")
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
     model = Net(channels=args.channels, blocks=args.blocks)
-    key = jax.random.PRNGKey(args.seed)
+    key = repro.seed_everything(args.seed)
     key, k = jax.random.split(key)
     params = model.init(k, jax.vmap(env.init)(jax.random.split(k, 1)).observation)
     opt = optax.adam(args.lr)
@@ -232,8 +233,19 @@ def main():
             key, k = jax.random.split(key)
             w, d, l = evaluate(params, k, args.eval_batch)
             msg += f" | vs random: win {w:.2f} draw {d:.2f} loss {l:.2f}"
-            with open(args.save, "wb") as f:
-                pickle.dump(jax.device_get(params), f)
+            repro.save_checkpoint(
+                args.save,
+                params,
+                net={"channels": args.channels, "blocks": args.blocks},
+                record={
+                    "run": {
+                        "seed": args.seed,
+                        "args": vars(args),
+                        "iteration": i,
+                        "dataset_id": None,
+                    }
+                },
+            )
         print(msg, flush=True)
 
 

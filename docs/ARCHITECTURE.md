@@ -59,6 +59,16 @@ Lichess PGN dump (CC0) ──► data pipeline ──► shards (obs, action, ou
 - Elo comes from the match score with a normal-approximation 95% interval (`elo.py`). The absolute figure is on Stockfish's UCI_Elo scale, not Lichess or FIDE; use it to compare our own checkpoints, not as a rating claim. Intervals are wide below about 100 games.
 - Cost: the agent searches all games every ply and keeps only its own moves, so about half the search work is discarded.
 
+## Data and reproducibility (milestone 2)
+- **Shards** (`pgx-rl-data build`): per split, safetensors files holding concatenated actions (int16), per-game offsets, the PGN result from White's perspective, both Elos and the Lichess game id. Split membership is a hash of the game id (default 1% val, 1% test), so it does not depend on order or seed. Default filters: both players at or above 2000, `Termination: Normal`, no bullet (base time under 180 s), 10 to 512 plies, standard chess from the initial position.
+- **Labels** (`pgx-rl-label`): Stockfish score for the side to move, squashed to [-1, 1] with the Lichess win-probability curve, float16, NaN where skipped by `--stride`. Fixed node limit, one thread, a new game per position. Two independent runs with different worker counts produced byte-identical files.
+- **Manifest** (`manifest.json`): source file names and SHA-256, filters, per-shard and per-label SHA-256, build stats and the code commit. `dataset_id` is the digest of everything that determines the data (format, filters, sources, shards, labels) and is what training runs cite. `pgx-rl-data verify` re-checks every hash, and `pgx-rl-hub` refuses to push a dataset that fails it.
+- **Byte determinism**: safetensors writes its metadata dict in hash-map order, so any file with two or more metadata keys has unstable bytes. All files here carry a single canonical-JSON `meta` entry (`repro.save_tensors`); keep it that way or hashes stop being reproducible.
+- **Checkpoints** are safetensors (no pickle) with a `.json` run record next to them: seed, all CLI arguments, `dataset_id` (null for pure self-play), parameter hash, file hash, library versions, devices and the git commit with a dirty flag. Commit before a run you intend to cite; a dirty tree is recorded as dirty. Loading re-checks the parameter hash.
+- **Seeds**: `repro.seed_everything(seed)` seeds Python and NumPy and returns the JAX key. JAX randomness is explicit, so every stochastic step must derive from that key. Evaluation records its own seed (it fixes the openings) and the checkpoint hash.
+- **Hugging Face** (`pgx-rl-hub`): `push-dataset` and `push-model` generate a card with the `dataset_id`, sources and commands, create the repo private unless `--public`, upload, and print the commit revision. `pull --revision` re-downloads at that revision and re-verifies hashes. Record the printed revisions next to the results that use them. Needs `HF_TOKEN` or `hf auth login`; nothing has been pushed yet.
+- Reproducing a result means: same code commit, same `dataset_id` (verified), same seed, same package versions. Bit-exact training also depends on hardware and XLA version, so compare metrics within noise on a different device rather than expecting identical bytes.
+
 ## Compute plan
 - Free cloud: Kaggle (weekly GPU/TPU quota; JAX runs natively on TPU) and Colab free tier for stage 1 and heavy self-play. Laptops for development, Stockfish labeling, and inference.
 - Expected ceiling is an estimate, not a measurement: from-scratch self-play likely stalls at club level; pretraining plus search plausibly reaches strong club to low expert.
@@ -81,13 +91,13 @@ Backend: [jax-mps](https://github.com/tillahoffmann/jax-mps) 0.11.1 (needs `jax<
 
 ## Risks and open spikes
 1. **JAX on Apple Metal**: resolved to a hybrid policy above. Open: why pgx step and mctx tree ops are slower on MPS, and whether a CPU-search / MPS-net split can beat either alone.
-2. **PGN to pgx conversion.** The 119-plane observation includes move history, so games must be replayed through pgx (or a faithful encoder) rather than converted position by position. Verify pgx's action encoding against python-chess with a round-trip test over many games.
-3. **pgx to FEN for Stockfish labels.** Confirm pgx can produce or accept FEN; otherwise label from python-chess positions generated during the same replay.
+2. **PGN to pgx conversion.** Resolved. Shards store games as pgx action sequences and training replays them through pgx for the history planes. `moves.py` is tested against python-chess, and every game is replayed through pgx before it is written. On the 2013 sample (about 6,100 games passing the header filters) no move was ever illegal in pgx. The only rejections (120, about 2%) were games that continue past a threefold repetition, which pgx ends as a draw and Lichess does not. They are dropped and counted as `drop_pgx_replay`, so the data under-represents long repetition endings. Revisit by truncating them as draws if that matters.
+3. **pgx to FEN for Stockfish labels.** Resolved by not using pgx FEN: labels come from replaying the stored actions with python-chess (`label.py`).
 4. **Python 3.14 + JAX/pgx/mctx compatibility** is pinned in `pyproject.toml`; any dependency added for data work (python-chess, zstandard) must be checked against it.
 
 ## Milestones
 1. **Done:** evaluation harness (`pgx-rl-eval`: Stockfish matches, Elo estimate) and throughput benchmark (`pgx-rl-bench`). Benchmark numbers for the other machines are still to be collected.
-2. Data pipeline: Lichess dump to sharded training data, with round-trip tests.
+2. **Done:** data pipeline (`pgx-rl-data`, `pgx-rl-label`) from Lichess dump to hash-pinned shards with Stockfish labels, plus reproducibility records and Hugging Face publishing (`pgx-rl-hub`). Not yet run at scale: only a 2013 sample dump (about 6,000 games) has been processed, and nothing has been pushed to the Hub.
 3. Stage 1 training + metrics; first strength number.
 4. Stage 2 self-play with replay buffer and gating.
 5. UCI wrapper and Lichess bot.
