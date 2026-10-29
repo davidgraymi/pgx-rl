@@ -10,12 +10,14 @@ requires-python = ">=3.14"
 dependencies = [
     "flax>=0.12.12",
     "jax>=0.12.0.1",
+    "mctx>=0.0.71",
     "optax>=0.2.8",
     "pgx>=2.6.0",
 ]
 
 [project.scripts]
 pgx-rl = "pgx_rl:main"
+pgx-rl-chess = "pgx_rl.chess:main"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]
