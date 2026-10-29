@@ -16,7 +16,7 @@ uv run pytest
 
 The target is the strongest chess engine that is free to train and run on a laptop plus free cloud tiers. The plan: supervised pretraining on the Lichess open database with Stockfish-labeled values, then Gumbel AlphaZero self-play fine-tuning, served through a UCI wrapper. A Decision Transformer baseline is included for comparison; diffusion world models and GRPO were evaluated and rejected. Details, risks and milestones are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); agent guidance is in [AGENTS.md](AGENTS.md).
 
-Status: only the self-play loop below exists so far (milestone 0).
+Status: self-play loop (milestone 0) and the evaluation harness and benchmark (milestone 1) exist.
 
 ## Chess (AlphaZero-style)
 
@@ -27,3 +27,13 @@ uv run pgx-rl-chess --iterations 100 --selfplay-batch 128 --simulations 32
 ```
 
 Games longer than `--max-steps` plies are scored as draws. Real strength needs a GPU/TPU and many iterations; on CPU use smaller settings (see `--help`).
+
+## Evaluation and benchmarks
+
+```bash
+brew install stockfish   # or any Stockfish binary; pass --stockfish PATH
+uv run pgx-rl-eval --params chess_params.pkl --simulations 32 --sf-elo 1350 --pairs 16
+uv run pgx-rl-bench      # per-machine throughput of net, pgx step, search, self-play, update
+```
+
+`pgx-rl-eval` reports W/D/L against Stockfish and an Elo difference with a 95% interval. Without `--params` it evaluates a random net.
