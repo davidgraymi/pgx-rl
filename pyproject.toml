@@ -27,6 +27,7 @@ pgx-rl-bench = "pgx_rl.bench:main"
 pgx-rl-data = "pgx_rl.data:main"
 pgx-rl-label = "pgx_rl.label:main"
 pgx-rl-hub = "pgx_rl.hub:main"
+pgx-rl-pretrain = "pgx_rl.pretrain:main"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]
