@@ -53,6 +53,12 @@ Lichess PGN dump (CC0) ──► data pipeline ──► shards (obs, action, ou
 - Fixed-seed suites so runs are comparable; log net-only and net+search strength separately.
 - Secondary-goal comparison: Decision Transformer vs policy/value net, with and without search.
 
+## Evaluation harness (milestone 1)
+- `pgx-rl-eval` plays the net (with `--simulations N` search, or `0` for the raw policy) against Stockfish. Openings are random legal lines (`--opening-plies`), each played with both colors, so `--pairs P` gives `2P` games. Stockfish is limited by `--sf-elo` (UCI_Elo) or `--sf-skill`, plus a per-move `--sf-nodes` limit.
+- pgx is the arbiter of game end; python-chess only supplies Stockfish's board. `moves.py` converts between the two (tested against pgx's legal-action mask over random games, plus castling, en passant and underpromotion). Games unfinished after `--max-plies` count as draws and are reported as truncated, which flatters weak engines, so check that count.
+- Elo comes from the match score with a normal-approximation 95% interval (`elo.py`). The absolute figure is on Stockfish's UCI_Elo scale, not Lichess or FIDE; use it to compare our own checkpoints, not as a rating claim. Intervals are wide below about 100 games.
+- Cost: the agent searches all games every ply and keeps only its own moves, so about half the search work is discarded.
+
 ## Compute plan
 - Free cloud: Kaggle (weekly GPU/TPU quota; JAX runs natively on TPU) and Colab free tier for stage 1 and heavy self-play. Laptops for development, Stockfish labeling, and inference.
 - Expected ceiling is an estimate, not a measurement: from-scratch self-play likely stalls at club level; pretraining plus search plausibly reaches strong club to low expert.
@@ -80,9 +86,22 @@ Backend: [jax-mps](https://github.com/tillahoffmann/jax-mps) 0.11.1 (needs `jax<
 4. **Python 3.14 + JAX/pgx/mctx compatibility** is pinned in `pyproject.toml`; any dependency added for data work (python-chess, zstandard) must be checked against it.
 
 ## Milestones
-1. Evaluation harness (Stockfish matches, Elo estimate) and benchmarks of current self-play throughput on each machine.
+1. **Done:** evaluation harness (`pgx-rl-eval`: Stockfish matches, Elo estimate) and throughput benchmark (`pgx-rl-bench`). Benchmark numbers for the other machines are still to be collected.
 2. Data pipeline: Lichess dump to sharded training data, with round-trip tests.
 3. Stage 1 training + metrics; first strength number.
 4. Stage 2 self-play with replay buffer and gating.
 5. UCI wrapper and Lichess bot.
 6. Decision Transformer baseline and comparison write-up.
+
+## Measured throughput: benchmark baseline (`pgx-rl-bench`, defaults)
+Apple CPU (`cpu:0`), jax 0.12.0.1, 64x4 net (9.97M parameters, mostly the 4672-way policy Dense), batch 64, 16 simulations, one run.
+
+| Component | Time |
+|---|---|
+| Net forward | 14.6 ms |
+| pgx step | 2.9 ms |
+| Search, one ply | 363 ms |
+| Self-play, 2048 positions | 14.0 s (147 positions/s) |
+| Update, 8 minibatches of 256 | 30.4 s |
+
+The update step costs about twice as much as generating its data, so measure it on MPS before assuming self-play is the bottleneck. Not yet measured on MPS or on the other machine.

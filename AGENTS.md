@@ -23,6 +23,9 @@ uv run pgx-rl-chess --iterations 2 --selfplay-batch 8 --simulations 4 --max-step
 ## Layout
 - `src/pgx_rl/train.py`: tic-tac-toe actor-critic (original example).
 - `src/pgx_rl/chess.py`: network, Gumbel MuZero self-play, update, eval, CLI.
+- `src/pgx_rl/moves.py`: python-chess <-> pgx move conversion.
+- `src/pgx_rl/elo.py`, `evaluate.py`: Elo estimates and the Stockfish match harness (`pgx-rl-eval`).
+- `src/pgx_rl/bench.py`: throughput benchmark (`pgx-rl-bench`).
 - `tests/`: pytest; keep tests tiny (few simulations, small batches) so they run on CPU in seconds.
 - `docs/ARCHITECTURE.md`: design and milestones.
 
