@@ -37,6 +37,7 @@ MAX_PLIES = 512  # pgx truncates chess at 512 plies
 ID_BYTES = 8  # Lichess game ids
 RESULTS = {"1-0": 1, "0-1": -1, "1/2-1/2": 0}  # white's perspective
 HEADER = re.compile(r'^\[(\w+) "(.*)"\]$')
+SHARD_NAME = re.compile(r"(train|val|test)-\d{5}(\.labels)?\.safetensors")
 
 step = jax.jit(jax.vmap(zero.env.step))
 init = jax.jit(jax.vmap(zero.env.init))
@@ -196,6 +197,13 @@ def seal(manifest):
     return manifest
 
 
+def shard_path(directory, name):
+    """Path of a manifest-listed file; manifests may come from the Hub, so names are strict."""
+    if not SHARD_NAME.fullmatch(name):
+        raise ValueError(f"unexpected file name in manifest: {name!r}")
+    return Path(directory) / name
+
+
 def read_manifest(directory):
     manifest = json.loads((Path(directory) / "manifest.json").read_text())
     manifest.setdefault("labels", [])
@@ -308,7 +316,13 @@ def verify(directory, pgn=()):
     if seal(dict(manifest))["dataset_id"] != manifest["dataset_id"]:
         problems.append("dataset_id does not match manifest contents")
     for shard in manifest["shards"] + manifest["labels"]:
-        path = directory / shard["name"]
+        try:
+            path = shard_path(directory, shard["name"])
+            if "shard" in shard:
+                shard_path(directory, shard["shard"])
+        except ValueError as e:
+            problems.append(str(e))
+            continue
         if not path.exists():
             problems.append(f"missing {shard['name']}")
         elif repro.sha256_file(path) != shard["sha256"]:

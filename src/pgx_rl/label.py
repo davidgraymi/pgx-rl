@@ -92,7 +92,7 @@ def main(argv=None):
         for entry in manifest["shards"]:
             if entry["split"] not in args.splits:
                 continue
-            shard = data.load_shard(directory / entry["name"])
+            shard = data.load_shard(data.shard_path(directory, entry["name"]))
             values = label_shard(shard, engines, limit, args.stride)
             name = entry["name"].replace(".safetensors", ".labels.safetensors")
             repro.save_tensors(

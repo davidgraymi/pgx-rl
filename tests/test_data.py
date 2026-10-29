@@ -4,7 +4,7 @@ import chess
 import chess.pgn
 import pytest
 
-from pgx_rl import data, moves
+from pgx_rl import data, moves, repro
 
 
 def pgn_game(gid, san_or_moves, result="1-0", white=2100, black=2200, **headers):
@@ -108,6 +108,20 @@ def test_verify_detects_tampering(pgn, tmp_path):
     shard = tmp_path / "ds" / manifest["shards"][0]["name"]
     shard.write_bytes(shard.read_bytes()[:-1] + b"\x01")
     assert any("hash mismatch" in p for p in data.verify(tmp_path / "ds"))
+
+
+def test_manifest_names_cannot_escape_directory(pgn, tmp_path):
+    build(pgn, tmp_path / "ds")
+    manifest = data.read_manifest(tmp_path / "ds")
+    manifest["shards"][0]["name"] = "../evil.safetensors"
+    repro.write_json(tmp_path / "ds" / "manifest.json", data.seal(manifest))
+    problems = data.verify(tmp_path / "ds")
+    assert any("unexpected file name" in p for p in problems)
+    with pytest.raises(ValueError):
+        data.shard_path(tmp_path, "sub/train-00000.safetensors")
+    with pytest.raises(ValueError):
+        data.shard_path(tmp_path, "train-00000.safetensors/../../x")
+    assert data.shard_path(tmp_path, "val-00003.labels.safetensors").parent == tmp_path
 
 
 def test_split_depends_only_on_game_id():
