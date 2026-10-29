@@ -8,7 +8,6 @@ are scored as draws and counted separately.
 
 import argparse
 import contextlib
-import pickle
 import random
 import shutil
 import time
@@ -22,7 +21,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from pgx_rl import chess as zero
-from pgx_rl import elo, moves
+from pgx_rl import elo, moves, repro
 
 step = jax.jit(jax.vmap(zero.env.step))
 init = jax.jit(jax.vmap(zero.env.init))
@@ -148,7 +147,7 @@ def play_match(
 def main():
     p = argparse.ArgumentParser(description="Evaluate the chess net against Stockfish.")
     p.add_argument(
-        "--params", help="pickle written by pgx-rl-chess; omit for a random net"
+        "--params", help="safetensors written by pgx-rl-chess; omit for a random net"
     )
     p.add_argument("--channels", type=int, default=64)
     p.add_argument("--blocks", type=int, default=4)
@@ -173,34 +172,35 @@ def main():
     p.add_argument("--opening-plies", type=int, default=4)
     p.add_argument("--max-plies", type=int, default=300)
     p.add_argument("--pgn", help="write games here")
+    p.add_argument(
+        "--record", help="write a JSON result record (seed, hashes, counts) here"
+    )
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
     if not args.stockfish:
         raise SystemExit("Stockfish not found: install it or pass --stockfish")
 
-    model = zero.Net(channels=args.channels, blocks=args.blocks)
-    key = jax.random.PRNGKey(args.seed)
+    key = repro.seed_everything(args.seed)
     if args.params:
-        with open(
-            args.params, "rb"
-        ) as f:  # our own checkpoints only; never load untrusted files
-            params = pickle.load(f)
-        label = args.params
+        params, net = repro.load_checkpoint(args.params)
+        model, label = zero.Net(**net), args.params
     else:
         print("no --params: evaluating a randomly initialised net")
+        net = {"channels": args.channels, "blocks": args.blocks}
+        model, label = zero.Net(**net), "random-net"
         params = model.init(key, init(jax.random.split(key, 1)).observation)
-        label = "random-net"
     act = make_agent(model, args.simulations, args.considered)
     openings = random_openings(args.pairs, args.opening_plies, args.seed)
 
     start = time.time()
     with contextlib.ExitStack() as stack:
-        engines = []
+        engines, engine_name = [], None
         for _ in range(2 * args.pairs):
             engine = chess.engine.SimpleEngine.popen_uci(args.stockfish)
             stack.callback(engine.quit)
             configure(engine, args.sf_elo, args.sf_skill)
             engines.append(engine)
+            engine_name = engine.id["name"]
         limit = chess.engine.Limit(nodes=args.sf_nodes)
         w, d, l, truncated, games = play_match(
             act, params, key, openings, engines, limit, args.max_plies, label
@@ -224,6 +224,19 @@ def main():
     )
     est = elo.estimate(w, d, l)
     print(f"relative to Stockfish: {est}")
+    if args.record:
+        repro.write_json(
+            args.record,
+            {
+                "args": vars(args),
+                "net": net,
+                "params_sha256": repro.hash_params(params),
+                "stockfish": engine_name,
+                "result": {"wins": w, "draws": d, "losses": l, "truncated": truncated},
+                "elo": {"diff": est.elo, "low": est.low, "high": est.high},
+                "environment": repro.environment_info(),
+            },
+        )
     if args.sf_elo:
         print(
             f"approximate absolute Elo (Stockfish UCI_Elo scale): {args.sf_elo + est.elo:.0f}"

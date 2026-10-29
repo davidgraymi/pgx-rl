@@ -10,10 +10,13 @@ requires-python = ">=3.14"
 dependencies = [
     "chess>=1.11.2",
     "flax>=0.12.12",
+    "huggingface-hub>=2.4.0",
     "jax>=0.12.0.1",
     "mctx>=0.0.71",
     "optax>=0.2.8",
     "pgx>=2.6.0",
+    "safetensors>=0.8.0",
+    "zstandard>=0.25.0",
 ]
 
 [project.scripts]
@@ -21,6 +24,9 @@ pgx-rl = "pgx_rl:main"
 pgx-rl-chess = "pgx_rl.chess:main"
 pgx-rl-eval = "pgx_rl.evaluate:main"
 pgx-rl-bench = "pgx_rl.bench:main"
+pgx-rl-data = "pgx_rl.data:main"
+pgx-rl-label = "pgx_rl.label:main"
+pgx-rl-hub = "pgx_rl.hub:main"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]
