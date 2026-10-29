@@ -26,6 +26,9 @@ uv run pgx-rl-chess --iterations 2 --selfplay-batch 8 --simulations 4 --max-step
 - `tests/`: pytest; keep tests tiny (few simulations, small batches) so they run on CPU in seconds.
 - `docs/ARCHITECTURE.md`: design and milestones.
 
+## Devices
+Default to CPU (`jax>=0.12`). jax-mps is faster for net-heavy work but requires `jax<0.12` and is slower for pgx/mctx; see "Measured performance" in the architecture doc before switching. Re-measure rather than assume when changing net size or batch size.
+
 ## Conventions
 - Keep environments, rollouts, and updates jitted and batched; avoid Python loops over games or plies.
 - Match the surrounding style: terse functions, minimal comments, `make_*` factories that close over the model. Run `ruff` before finishing.

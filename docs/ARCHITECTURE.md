@@ -57,8 +57,24 @@ Lichess PGN dump (CC0) ──► data pipeline ──► shards (obs, action, ou
 - Free cloud: Kaggle (weekly GPU/TPU quota; JAX runs natively on TPU) and Colab free tier for stage 1 and heavy self-play. Laptops for development, Stockfish labeling, and inference.
 - Expected ceiling is an estimate, not a measurement: from-scratch self-play likely stalls at club level; pretraining plus search plausibly reaches strong club to low expert.
 
+## Measured performance (Apple M3, one run each, batch 128, 16 simulations)
+Backend: [jax-mps](https://github.com/tillahoffmann/jax-mps) 0.11.1 (needs `jax<0.12`; the project currently pins `jax>=0.12`, so it was tested in a separate venv with jax 0.11.2).
+
+| Component | CPU | MPS |
+|---|---|---|
+| Net forward, 64ch x 4 blocks | 19 ms | 6 ms |
+| Net forward, 128ch x 8 blocks | 97 ms | 34 ms |
+| pgx chess step | 4 ms | 11 ms |
+| mctx tree bookkeeping (16 sims) | 153 ms | 300 ms |
+| Full search, 64x4 net | 594 ms | 614 ms |
+| Full search, 128x8 net | 1.94 s | 1.12 s |
+
+- The net is 3x faster on MPS; pgx stepping and mctx tree ops are 2-3x slower. Per-search time is roughly tree + 16 x (env step + net forward), which matched measurements.
+- Policy: develop and evaluate on CPU. Use MPS for stage 1 pretraining (pure net work) and for self-play once the net is about 128x8 or larger. Adopting it means resolving the `jax<0.12` pin.
+- Roofline ([neural-cost](https://github.com/davidgraymi/neural-cost)) on the net forward: 64x4 reaches 69% of the memory-bandwidth bound on MPS, 128x8 only 39%, both memory-bound (GroupNorm and activations). Headroom is in fusion and bf16, not more FLOPs. neural-cost does not see pgx or mctx work, which is most of the self-play time. Its hardware peak is the GPU's, so its CPU efficiency figures are not meaningful.
+
 ## Risks and open spikes
-1. **JAX on Apple Metal** is experimental and mctx's control flow may not run well on it. Benchmark CPU vs Metal before choosing local defaults; MLX is a fallback for the net only.
+1. **JAX on Apple Metal**: resolved to a hybrid policy above. Open: why pgx step and mctx tree ops are slower on MPS, and whether a CPU-search / MPS-net split can beat either alone.
 2. **PGN to pgx conversion.** The 119-plane observation includes move history, so games must be replayed through pgx (or a faithful encoder) rather than converted position by position. Verify pgx's action encoding against python-chess with a round-trip test over many games.
 3. **pgx to FEN for Stockfish labels.** Confirm pgx can produce or accept FEN; otherwise label from python-chess positions generated during the same replay.
 4. **Python 3.14 + JAX/pgx/mctx compatibility** is pinned in `pyproject.toml`; any dependency added for data work (python-chess, zstandard) must be checked against it.
