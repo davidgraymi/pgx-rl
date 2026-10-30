@@ -170,7 +170,7 @@ def main(argv=None):
     p.add_argument("directory", help="dataset directory (manifest.json and shards)")
     p.add_argument("--epochs", type=int, default=1)
     p.add_argument("--minibatch", type=int, default=256)
-    p.add_argument("--chunk", type=int, default=32, help="games replayed at once")
+    p.add_argument("--chunk", type=int, default=256, help="games replayed at once")
     p.add_argument("--max-plies", type=int, default=256, help="plies kept per game")
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument(
@@ -178,6 +178,9 @@ def main(argv=None):
     )
     p.add_argument("--channels", type=int, default=64)
     p.add_argument("--blocks", type=int, default=4)
+    p.add_argument("--eval-every", type=int, default=2000, help="steps between evals")
+    p.add_argument("--eval-games", type=int, default=300, help="val games per eval")
+    p.add_argument("--patience", type=int, default=5, help="evals without improvement")
     p.add_argument("--save", default="pretrained.safetensors")
     p.add_argument("--record", help="write the final validation metrics here (json)")
     p.add_argument("--seed", type=int, default=0)
@@ -198,6 +201,16 @@ def main(argv=None):
     train, evaluate = make_step(model, opt, args.blend)
     net = {"channels": args.channels, "blocks": args.blocks}
 
+    def score(m):
+        return m["policy_ce"] + m["value_mse_outcome"]
+
+    def val_eval(params, games):
+        return run_eval(
+            evaluate, params, games, args.chunk, args.max_plies, args.minibatch, rng
+        )
+
+    watch = val_games[: args.eval_games]  # fixed slice, so scores are comparable
+    best, best_params, best_step, stale, stop = np.inf, params, 0, 0, False
     start, steps = time.time(), 0
     for epoch in range(1, args.epochs + 1):
         for pos in positions(train_games, args.chunk, args.max_plies, rng, True):
@@ -212,20 +225,32 @@ def main(argv=None):
                         f"value {val:.3f} top1 {acc:.3f} ({time.time() - start:.0f}s)",
                         flush=True,
                     )
-        metrics = (
-            run_eval(
-                evaluate,
-                params,
-                val_games,
-                args.chunk,
-                args.max_plies,
-                args.minibatch,
-                rng,
-            )
-            if val_games
-            else {}
-        )
-        print(f"epoch {epoch} val {metrics}", flush=True)
+                if watch and steps % args.eval_every == 0:
+                    m = val_eval(params, watch)
+                    if score(m) < best:
+                        best, best_params, best_step, stale = score(m), params, steps, 0
+                    else:
+                        stale += 1
+                    print(
+                        f"step {steps} val policy_ce {m['policy_ce']:.4f} top1 "
+                        f"{m['top1']:.4f} value_mse {m['value_mse_outcome']:.4f} "
+                        f"best step {best_step} stale {stale}",
+                        flush=True,
+                    )
+                    stop = stale >= args.patience
+                if stop:
+                    break
+            if stop:
+                break
+        if stop:
+            print(f"early stop at step {steps}", flush=True)
+            break
+    if watch:
+        params = best_params  # the checkpoint is the best step, not the last
+    else:
+        best_step = steps
+    metrics = val_eval(params, val_games) if val_games else {}
+    print(f"final (step {best_step}) val {metrics}", flush=True)
 
     repro.save_checkpoint(
         args.save,
@@ -235,7 +260,8 @@ def main(argv=None):
             "run": {
                 "seed": args.seed,
                 "args": vars(args),
-                "steps": steps,
+                "steps_trained": steps,
+                "step_saved": best_step,
                 "dataset_id": dataset_id,
                 "val": metrics,
             }

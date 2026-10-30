@@ -22,7 +22,20 @@ def test_pretrain_end_to_end_is_reproducible(pgn, tmp_path):  # noqa: F811
     for name in "ab":
         pretrain.main(
             [str(tmp_path / "ds"), "--channels", "8", "--blocks", "1", "--chunk", "4"]
-            + ["--minibatch", "16", "--max-plies", "64", "--save", str(tmp_path / name)]
+            + [
+                "--eval-every",
+                "3",
+                "--eval-games",
+                "2",
+                "--patience",
+                "1",
+                "--minibatch",
+                "16",
+                "--max-plies",
+                "64",
+                "--save",
+                str(tmp_path / name),
+            ]
             + ["--record", str(tmp_path / f"{name}.json")]
         )
         hashes.append(repro.sha256_file(tmp_path / name))
