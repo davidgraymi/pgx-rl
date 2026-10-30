@@ -98,7 +98,7 @@ Backend: [jax-mps](https://github.com/tillahoffmann/jax-mps) 0.11.1 (needs `jax<
 ## Milestones
 1. **Done:** evaluation harness (`pgx-rl-eval`: Stockfish matches, Elo estimate) and throughput benchmark (`pgx-rl-bench`). Benchmark numbers for the other machines are still to be collected.
 2. **Done:** data pipeline (`pgx-rl-data`, `pgx-rl-label`) from Lichess dump to hash-pinned shards with Stockfish labels, plus reproducibility records and Hugging Face publishing (`pgx-rl-hub`). Not yet run at scale: only a 2013 sample dump (about 6,000 games) has been processed, and nothing has been pushed to the Hub.
-3. Stage 1 training + metrics; first strength number.
+3. **In progress:** stage 1 training (`pgx-rl-pretrain`) is implemented and reports held-out policy top-1, policy CE and value MSE (vs outcome and vs Stockfish labels). Smoke run on the 2013 sample (5,799 train games, unlabeled; 70 val games, 64x4 net, 2 epochs, CPU, 11 min, seed 0): val top-1 0.32, policy CE 2.35, value MSE 0.84 vs outcome and 0.16 vs Stockfish labels (691 labeled positions). Not yet done: a Stockfish match for a strength number, and training on a real-scale dataset.
 4. Stage 2 self-play with replay buffer and gating.
 5. UCI wrapper and Lichess bot.
 6. Decision Transformer baseline and comparison write-up.
