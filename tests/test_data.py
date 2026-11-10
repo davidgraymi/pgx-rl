@@ -129,3 +129,13 @@ def test_split_depends_only_on_game_id():
     splits = [data.split_of(g, 10, 10) for g in ids]
     assert splits == [data.split_of(g, 10, 10) for g in ids]
     assert 5 < splits.count("val") < 40 and 5 < splits.count("test") < 40
+
+
+def test_sampling_is_a_deterministic_subset(pgn, tmp_path):
+    full = build(pgn, tmp_path / "full")
+    half = build(pgn, tmp_path / "half", "--sample-permille", "500")
+    again = build(pgn, tmp_path / "again", "--sample-permille", "500")
+    assert half["dataset_id"] == again["dataset_id"] != full["dataset_id"]
+    kept = lambda m: sum(s["games"] for s in m["shards"])
+    assert 0 < kept(half) < kept(full)
+    assert half["stats"]["drop_sample"] > 0

@@ -17,6 +17,7 @@ import io
 import json
 import re
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -37,6 +38,7 @@ MAX_PLIES = 512  # pgx truncates chess at 512 plies
 ID_BYTES = 8  # Lichess game ids
 RESULTS = {"1-0": 1, "0-1": -1, "1/2-1/2": 0}  # white's perspective
 HEADER = re.compile(r'^\[(\w+) "(.*)"\]$')
+PROGRESS_EVERY = 1_000_000
 SHARD_NAME = re.compile(r"(train|val|test)-\d{5}(\.labels)?\.safetensors")
 
 step = jax.jit(jax.vmap(zero.env.step))
@@ -117,6 +119,11 @@ def split_of(gid: bytes, val_permille: int, test_permille: int) -> str:
     if bucket < val_permille + test_permille:
         return "test"
     return "train"
+
+
+def sample_bucket(gid: bytes) -> int:
+    """Deterministic 0-999 bucket for subsampling, independent of the split bucket."""
+    return int.from_bytes(hashlib.sha256(gid).digest()[4:8], "big") % 1000
 
 
 @jax.jit
@@ -222,9 +229,10 @@ def build(args):
         "test_permille": args.test_permille,
         "shard_games": args.shard_games,
         "max_games": args.max_games,
+        "sample_permille": args.sample_permille,
     }
     stats, buffers, shards, counts = Counter(), {s: [] for s in SPLITS}, [], Counter()
-    accepted = 0
+    accepted, started = 0, time.time()
 
     def flush(split):
         games = buffers[split]
@@ -264,10 +272,21 @@ def build(args):
                 if args.max_games and accepted >= args.max_games:
                     break
                 stats["seen"] += 1
+                if stats["seen"] % PROGRESS_EVERY == 0:
+                    print(
+                        f"seen {stats['seen']:,} accepted {accepted:,} "
+                        f"({time.time() - started:.0f}s)",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                 if reason := reject_reason(
                     headers, args.min_elo, args.min_base_seconds
                 ):
                     stats[f"drop_{reason}"] += 1
+                    continue
+                gid = game_id(headers)
+                if sample_bucket(gid) >= args.sample_permille:
+                    stats["drop_sample"] += 1
                     continue
                 actions = game_actions(text)
                 if actions is None:
@@ -277,7 +296,6 @@ def build(args):
                     stats["drop_length"] += 1
                     continue
                 accepted += 1
-                gid = game_id(headers)
                 split = split_of(gid, args.val_permille, args.test_permille)
                 buffers[split].append(
                     {
@@ -354,6 +372,12 @@ def main(argv=None):
         type=int,
         default=0,
         help="stop after this many accepted games (before replay); 0 = all",
+    )
+    b.add_argument(
+        "--sample-permille",
+        type=int,
+        default=1000,
+        help="keep this share of qualifying games, chosen by game-id hash",
     )
     v = sub.add_parser("verify", help="check shard (and optionally source) hashes")
     v.add_argument("directory")

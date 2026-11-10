@@ -26,6 +26,7 @@ uv run pgx-rl-chess --iterations 2 --selfplay-batch 8 --simulations 4 --max-step
 - `src/pgx_rl/moves.py`: python-chess <-> pgx move conversion.
 - `src/pgx_rl/elo.py`, `evaluate.py`: Elo estimates and the Stockfish match harness (`pgx-rl-eval`).
 - `src/pgx_rl/data.py`, `label.py`: Lichess PGN to hash-pinned shards (`pgx-rl-data`) and Stockfish labels (`pgx-rl-label`).
+- `src/pgx_rl/pretrain.py`: stage 1 supervised training from dataset shards (`pgx-rl-pretrain`).
 - `src/pgx_rl/repro.py`, `hub.py`: seeds, run records, safetensors checkpoints; Hugging Face push/pull (`pgx-rl-hub`).
 - `src/pgx_rl/bench.py`: throughput benchmark (`pgx-rl-bench`).
 - `tests/`: pytest; keep tests tiny (few simulations, small batches) so they run on CPU in seconds.

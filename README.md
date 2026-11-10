@@ -45,6 +45,7 @@ uv run pgx-rl-bench      # per-machine throughput of net, pgx step, search, self
 uv run pgx-rl-data build lichess_db_standard_rated_2024-01.pgn.zst --out data/lichess-2024-01
 uv run pgx-rl-label data/lichess-2024-01 --stockfish $(which stockfish) --workers 4
 uv run pgx-rl-data verify data/lichess-2024-01 --pgn lichess_db_standard_rated_2024-01.pgn.zst
+uv run pgx-rl-pretrain data/lichess-2024-01 --epochs 2 --save pretrained.safetensors   # stage 1; prints held-out top-1 and value MSE
 uv run pgx-rl-hub push-dataset data/lichess-2024-01 --repo USER/chess-lichess-2024-01   # private unless --public
 uv run pgx-rl-hub push-model chess_params.safetensors --repo USER/chess-net
 ```
